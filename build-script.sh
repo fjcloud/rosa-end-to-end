@@ -1,5 +1,7 @@
 terraform apply
 
+export NAME=florian
+
 export SUBNET_IDS=$(terraform output -raw cluster-subnets-string)
 
 export REGION=eu-west-1
@@ -13,25 +15,25 @@ then
 fi
 
 echo "create account roles"
-rosa create account-roles --hosted-cp --mode auto --prefix rhys-hcp  --yes
+rosa create account-roles --hosted-cp --mode auto --prefix $NAME-hcp  --yes
 
 echo "create oidc config"
 OIDC_CONFIG_ID=`rosa create oidc-config --mode auto -y --output json | jq -r '.id'`
 
 echo "Create operator roles"
-rosa create operator-roles --prefix rhys-hcp --oidc-config-id $OIDC_CONFIG_ID --hosted-cp --installer-role-arn arn:aws:iam::660250927410:role/rhys-hcp-HCP-ROSA-Installer-Role --mode auto -y
+rosa create operator-roles --prefix $NAME-hcp --oidc-config-id $OIDC_CONFIG_ID --hosted-cp --installer-role-arn arn:aws:iam::660250927410:role/$NAME-hcp-HCP-ROSA-Installer-Role --mode auto -y
 
 echo "create cluster"
-rosa create cluster --cluster-name rhys-hcp --sts --role-arn arn:aws:iam::660250927410:role/rhys-hcp-HCP-ROSA-Installer-Role --support-role-arn arn:aws:iam::660250927410:role/rhys-hcp-HCP-ROSA-Support-Role --worker-iam-role arn:aws:iam::660250927410:role/rhys-hcp-HCP-ROSA-Worker-Role --operator-roles-prefix rhys-hcp --oidc-config-id $OIDC_CONFIG_ID --region $REGION --version 4.14.3 --replicas 3 --compute-machine-type m6a.xlarge --subnet-ids $SUBNET_IDS --hosted-cp
+rosa create cluster --cluster-name $NAME-hcp --sts --role-arn arn:aws:iam::660250927410:role/$NAME-hcp-HCP-ROSA-Installer-Role --support-role-arn arn:aws:iam::660250927410:role/$NAME-hcp-HCP-ROSA-Support-Role --worker-iam-role arn:aws:iam::660250927410:role/$NAME-hcp-HCP-ROSA-Worker-Role --operator-roles-prefix $NAME-hcp --oidc-config-id $OIDC_CONFIG_ID --region $REGION --version 4.14.3 --replicas 3 --compute-machine-type m6a.xlarge --subnet-ids $SUBNET_IDS --hosted-cp
 
 echo "watch cluster build"
-rosa logs install -c rhys-hcp --watch
+rosa logs install -c $NAME-hcp --watch
 
-rosa create admin -c rhys-hcp -p $CLUSTER_PASSWORD 
+rosa create admin -c $NAME-hcp -p $CLUSTER_PASSWORD 
 
 sleep 60
 
-CLUSTER_API=`rosa describe cluster -c rhys-hcp -o json | jq -r '.api.url'`
+CLUSTER_API=`rosa describe cluster -c $NAME-hcp -o json | jq -r '.api.url'`
 
 while True
 do
@@ -57,5 +59,5 @@ echo $argoPass
 
 argocd login --insecure --grpc-web $argoURL  --username admin --password $argoPass
 
-oc apply -f rhys-app.yaml
+oc apply -f $NAME-app.yaml
     
